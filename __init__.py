@@ -21,7 +21,8 @@ class InvertLogic(KettleController):
 
     TempDiff = Property.Number("Degrees from target to start Reduction", True, 2)
     PowDiff = Property.Number("Percent of power deduction", True, 50)
-    RampUp = Property.Number("Ramp up time", True, 2)
+    RampUp = Property.Number("Percent of power increase per 1/10 sec", True, 2)
+
 
     def stop(self):
         
@@ -31,21 +32,38 @@ class InvertLogic(KettleController):
 
     def run(self):
         x=InvertPWM()
+        top = 100-x.power
+        ramp = 0
 
         if self.TempDiff is None:
             self.TempDiff = 2
         if self.PowDiff is None:
             self.PowDiff = 50
+        if self.RampUp is None:
+            self.RampUp = 2
         
         while self.is_running():
          
             if self.get_temp() >= self.get_target_temp():
+                ramp = 0
                 self.heater_off()
             elif self.get_temp() < self.get_target_temp()-int(self.TempDiff):
-                self.heater_on(int(100-x.power))
+                self.heater_on(0)
+                while int(ramp) < int(top):
+                    self.actor_power(int(ramp))
+                    ramp = ramp+int(self.RampUp)
+                    self.sleep(.1)
+                self.actor_power(int(top))
             else:
-                self.heater_on(int(100-(x.power + ((100-x.power) * int(self.PowDiff)/100))))
+                self.heater_on(0)
+                while int(ramp) < int(top- (top * int(self.PowDiff)/100)):
+                    self.actor_power(int(ramp))
+                    ramp = ramp+int(self.RampUp)
+                    self.sleep(.1)
+                self.actor_power(int(top- (top * int(self.PowDiff)/100)))
+                        
             self.sleep(1)
+            top = 100-x.power
             self.heater_off()
 
 
