@@ -61,9 +61,13 @@ class InvertLogic(KettleController):
                     ramp = ramp+int(self.RampUp)
                     self.sleep(.1)
                 self.actor_power(int(top- (top * int(self.PowDiff)/100)))
+                Rtop = 100-x.power
                         
             self.sleep(1)
-            top = 100-x.power
+            Ntop = 100-x.power
+            if int(Ntop) <> int(top):
+                if int(Ntop)<> int(Rtop):
+                    top = Ntop   
             self.heater_off()
 
 
@@ -94,10 +98,6 @@ class InvertPWM(ActorBase):
         else:
             self.p.ChangeDutyCycle(int(InvertPWM.power))
 
-    def get_power():
-        return 100-InvertPWM.power
-            
-    
     def set_power(self, power):
         if power is not None:
             InvertPWM.power = (100 - power)
