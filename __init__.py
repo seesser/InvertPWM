@@ -9,38 +9,46 @@ try:
     import RPi.GPIO as GPIO
 
     GPIO.setmode(GPIO.BCM)
+    
 except Exception as e:
     print e
     pass
 
+
 @cbpi.controller
 class InvertLogic(KettleController):
 
-    TempDiff = Property.Number("# of Degrees From Target To Start", True, 0)
-    PowDiff = Property.Number("Reduce Power By What % Of Selected Power", True, 0)
-    
-    def stop(self):
 
+    TempDiff = Property.Number("Degrees from target to start Reduction", True, 2)
+    PowDiff = Property.Number("Percent of power deduction", True, 50)
+    RampUp = Property.Number("Ramp up time", True, 2)
+
+    def stop(self):
+        
         super(KettleController, self).stop()
         self.heater_off()
 
+
     def run(self):
+        x=InvertPWM()
+
         if self.TempDiff is None:
             self.TempDiff = 2
-        if self.PwrRdt is None:
-            self.PwrRdt = 50
+        if self.PowDiff is None:
+            self.PowDiff = 50
         
         while self.is_running():
-            if self.get_temp()  >= self.get_target_temp():
+         
+            if self.get_temp() >= self.get_target_temp():
                 self.heater_off()
-            elif self.get_temp() < (self.get_target_temp()-int(self.TempDiff)):
-                self.heater_on(int(100-InvertPWM.power))
+            elif self.get_temp() < self.get_target_temp()-int(self.TempDiff):
+                self.heater_on(int(100-x.power))
             else:
-                self.heater_on(int(100-(InvertPWM.power + 
-                                ((100-InvertPWM.power) * 
-                                int(self.PowDiff)/100))))
+                self.heater_on(int(100-(x.power + ((100-x.power) * int(self.PowDiff)/100))))
             self.sleep(1)
             self.heater_off()
+
+
 
 @cbpi.actor       
 class InvertPWM(ActorBase):
@@ -68,9 +76,13 @@ class InvertPWM(ActorBase):
         else:
             self.p.ChangeDutyCycle(int(InvertPWM.power))
 
+    def get_power():
+        return 100-InvertPWM.power
+            
+    
     def set_power(self, power):
         if power is not None:
-            InvertPWM.power = (100-power)
+            InvertPWM.power = (100 - power)
         if self.stopped is False:
             self.p.ChangeDutyCycle(int(InvertPWM.power))
 
