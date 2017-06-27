@@ -1,5 +1,4 @@
 import time
-
 from modules import cbpi
 from modules.core.props import Property
 from modules.core.hardware import ActorBase
@@ -14,21 +13,19 @@ except Exception as e:
     print e
     pass
 
-
 @cbpi.controller
 class InvertLogic(KettleController):
-
-
+    
     TempDiff = Property.Number("Degrees from target to start Reduction", True, 2)
     PowDiff = Property.Number("Percent of power deduction", True, 50)
     RampUp = Property.Number("Percent of power increase per 1/10 sec", True, 2)
-
-
+    Checking = Property.Select("This logic only works with heater running InvertPWM"
+                               ,options=["OK"])
+    
     def stop(self):
-        
+        self.actor_power(int(100 - InvertPWM.power))
         super(KettleController, self).stop()
         self.heater_off()
-
 
     def run(self):
         x=InvertPWM()
@@ -43,7 +40,6 @@ class InvertLogic(KettleController):
             self.RampUp = 2
         
         while self.is_running():
-         
             if self.get_temp() >= self.get_target_temp():
                 ramp = 0
                 self.heater_off()
@@ -61,16 +57,13 @@ class InvertLogic(KettleController):
                     ramp = ramp+int(self.RampUp)
                     self.sleep(.1)
                 self.actor_power(int(top- (top * int(self.PowDiff)/100)))
-                Rtop = 100-x.power
-                        
+                ramp = 100 - x.power
+                InvertPWM.power= 100-top            
             self.sleep(1)
             Ntop = 100-x.power
             if int(Ntop) <> int(top):
-                if int(Ntop)<> int(Rtop):
-                    top = Ntop   
+                top = Ntop   
             self.heater_off()
-
-
 
 @cbpi.actor       
 class InvertPWM(ActorBase):
